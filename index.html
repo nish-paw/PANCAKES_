@@ -1,0 +1,450 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>RentHub</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: sticky app bar with view tabs; Browse = toolbar + zone chips + card grid; Bookings/Listings = row lists; one shared modal */
+:root{
+  --bg:#F6F6F6;--surface:#FFFFFF;--ink:#111111;--muted:#5F5F66;--line:#E4E4E7;
+  --brand:#111111;--on-brand:#FFFFFF;--accent:#111111;--on-accent:#FFFFFF;
+  --ok:#15803D;--warn:#B45309;--bad:#B91C1C;--soft:#F0F0F1;--busy:#D9D9DC;
+  --shadow:0 1px 2px rgb(15 27 42/.05),0 4px 16px rgb(15 27 42/.06);
+  --head:"Plus Jakarta Sans",system-ui,sans-serif;--body:"Inter",system-ui,sans-serif;--mono:"JetBrains Mono",ui-monospace,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#000000;--surface:#0D0D0D;--ink:#F4F4F5;--muted:#A1A1AA;--line:#242426;
+  --brand:#F4F4F5;--on-brand:#000000;--accent:#FFFFFF;--on-accent:#000000;
+  --ok:#4ADE80;--warn:#FBBF24;--bad:#F87171;--soft:#161617;--busy:#2B2B2E;--shadow:0 4px 16px rgb(0 0 0/.3);color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#000000;--surface:#0D0D0D;--ink:#F4F4F5;--muted:#A1A1AA;--line:#242426;
+  --brand:#F4F4F5;--on-brand:#000000;--accent:#FFFFFF;--on-accent:#000000;
+  --ok:#4ADE80;--warn:#FBBF24;--bad:#F87171;--soft:#161617;--busy:#2B2B2E;--shadow:0 4px 16px rgb(0 0 0/.3);color-scheme:dark}
+
+[hidden]{display:none!important}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--grad,none) fixed,var(--bg);min-height:100vh;color:var(--ink);font:15px/1.5 var(--body)}
+h1,h2,h3{font-family:var(--head);margin:0;text-wrap:balance}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.wrap{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* App bar */
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--surface);border-bottom:1px solid var(--line)}
+.bar{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding-block:10px}
+.logo{font:800 20px var(--head);letter-spacing:-.02em;display:flex;align-items:center;gap:8px}
+.logo svg{width:28px;height:28px;flex:none}
+.lg1{fill:var(--brand)}.lg2{fill:none;stroke:var(--on-brand);stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+/* Colour picker popover */
+.right{position:relative}
+.pop{position:absolute;top:calc(100% + 8px);right:0;width:min(300px,calc(100vw - 32px));background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;box-shadow:var(--shadow);z-index:12;display:grid;gap:8px}
+.ph{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);background:var(--soft);border-radius:10px;padding:3px}
+.seg button{border:0;background:none;padding:6px;border-radius:8px;font-size:13px}
+.seg .on{background:var(--surface);box-shadow:var(--shadow);font-weight:600}
+.sw{display:flex;flex-wrap:wrap;gap:6px}
+.sw button{display:flex;align-items:center;gap:6px;border:1px solid var(--line);background:none;border-radius:99px;padding:4px 10px 4px 4px;font-size:13px}
+.sw button.on{border-color:var(--ink);font-weight:600}
+.sw i{width:18px;height:18px;border-radius:50%;border:1px solid var(--line)}
+.logo b{color:var(--brand)}
+.tabs{display:flex;gap:4px;flex:1;overflow-x:auto}
+@media (max-width:640px){.tabs{order:3;flex-basis:100%}}
+.tab{border:0;background:none;padding:8px 12px;border-radius:8px;color:var(--muted);font-weight:500;white-space:nowrap}
+.tab.on{background:var(--soft);color:var(--ink)}
+.tab span{background:var(--brand);color:var(--on-brand);border-radius:99px;font-size:11px;padding:1px 7px;margin-left:4px}
+.right{display:flex;gap:8px;margin-left:auto}
+.icon{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center}
+.icon svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2}
+
+.btn{border:1px solid transparent;background:var(--brand);color:var(--on-brand);border-radius:10px;padding:8px 14px;font-weight:600;font-size:14px}
+.btn.acc{background:var(--accent);color:var(--on-accent)}
+.btn.line{background:var(--surface);color:var(--ink);border-color:var(--line)}
+.btn.danger{background:none;color:var(--bad);border-color:var(--line)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* Browse */
+main{padding-block:28px 64px}
+.hero{display:flex;flex-wrap:wrap;gap:20px;justify-content:space-between;align-items:flex-end;margin-bottom:22px}
+.hero h1{font-size:clamp(26px,4.4vw,38px);letter-spacing:-.02em;max-width:20ch}
+.hero p{color:var(--muted);margin:6px 0 0}
+.stats{display:flex;gap:22px}
+.stats b{display:block;font:700 22px var(--head)}
+.stats span{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.tools{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.tools input{flex:1;min-width:200px}
+input,select{padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:22px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:5px 12px;font-size:13px}
+.chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;box-shadow:var(--shadow)}
+.pic{aspect-ratio:16/11;max-width:100%;background:var(--soft);display:grid;place-items:center;overflow:hidden}
+.pic img{width:100%;height:100%;object-fit:cover}
+.pic svg{width:38%}
+.a{fill:var(--brand)}.b{fill:var(--pic2,var(--accent))}.c{fill:var(--surface)}.s{fill:none;stroke:var(--brand);stroke-width:4;stroke-linejoin:round}
+.body{padding:12px 14px 14px;display:flex;flex-direction:column;gap:2px;flex:1}
+.kick{font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--brand)}
+.body h3{font-size:16px;font-weight:700}
+.muted{color:var(--muted);font-size:13px}
+.foot{display:flex;justify-content:space-between;align-items:center;margin-top:auto;padding-top:10px}
+.price{font:700 17px var(--mono)}
+.price small{font:400 12px var(--body);color:var(--muted)}
+.empty{color:var(--muted);padding:28px;text-align:center;border:1px dashed var(--line);border-radius:14px}
+
+/* Lists */
+.vh{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.vh h2{font-size:26px}
+.list{display:grid;gap:10px}
+.row{display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+.thumb{width:56px;height:56px;border-radius:10px;background:var(--soft);display:grid;place-items:center;overflow:hidden}
+.thumb svg{width:60%}.thumb img{width:100%;height:100%;object-fit:cover}
+.row h3{font-size:15px}
+.acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.pill{display:inline-block;font-size:11px;font-weight:600;border-radius:99px;padding:2px 8px;margin-left:6px;vertical-align:1px;border:1px solid currentColor}
+.p-up{color:var(--brand)}.p-on{color:var(--ok)}.p-done{color:var(--muted)}.p-pause{color:var(--warn)}
+.mono{font-family:var(--mono);font-size:13px}
+@media (max-width:640px){.row{grid-template-columns:48px minmax(0,1fr)}.thumb{width:48px;height:48px}.acts{grid-column:1/-1;justify-content:flex-start}}
+
+/* Modal + calendar */
+.ov{position:fixed;inset:0;z-index:20;background:rgb(5 12 20/.55);display:grid;place-items:center;padding:16px}
+.modal{background:var(--surface);border:1px solid var(--line);border-radius:16px;width:min(520px,100%);max-height:92vh;overflow:auto;padding:22px;box-shadow:var(--shadow)}
+.modal h2{font-size:21px}
+.owner{display:flex;gap:10px;align-items:center;background:var(--soft);border-radius:10px;padding:10px 12px;margin:14px 0}
+.av{width:34px;height:34px;border-radius:50%;background:var(--brand);color:var(--on-brand);display:grid;place-items:center;font-weight:700;flex:none}
+.ch{display:flex;justify-content:space-between;align-items:center;margin:10px 0 6px}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+.cal i{font-style:normal;font-size:11px;color:var(--muted)}
+.day{border:0;background:var(--soft);border-radius:8px;padding:8px 0;font:500 13px var(--mono)}
+.day:disabled{background:none;color:var(--muted);opacity:.45;cursor:not-allowed}
+.day.busy{background:var(--busy);text-decoration:line-through;opacity:1}
+.day.blk{background:repeating-linear-gradient(45deg,var(--busy) 0 4px,transparent 4px 8px);color:var(--bad)}
+.day.pick{background:var(--brand);color:var(--on-brand)}
+.day.mid{background:color-mix(in srgb,var(--brand) 22%,var(--soft))}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:8px}
+.legend s{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.bill{border-top:1px dashed var(--line);margin-top:14px;padding-top:12px;display:grid;gap:3px}
+.bill div{display:flex;justify-content:space-between}
+.bill .tot{font:700 19px var(--mono)}
+.mact{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
+.form{display:grid;gap:10px;margin-top:12px}
+.form label{display:grid;gap:4px;font-size:13px;font-weight:500}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.code{font:700 clamp(24px,7vw,32px) var(--mono);letter-spacing:.08em;text-align:center;background:var(--accent);color:var(--on-accent);border-radius:12px;padding:12px;margin:14px 0;user-select:all}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:30;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:500;box-shadow:var(--shadow)}
+footer{color:var(--muted);font-size:13px;padding-block:0 32px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+footer button{border:0;background:none;color:var(--brand);padding:0}
+</style>
+</head>
+<body>
+
+<header class="top"><div class="wrap bar">
+  <div class="logo"><svg viewBox="0 0 32 32" aria-hidden="true"><rect class="lg1" width="32" height="32" rx="9"/><path class="lg2" d="M9 12.5h13l-3.5-3.5M23 19.5H10l3.5 3.5"/></svg><span>Rent<b>Hub</b></span></div>
+  <nav class="tabs" id="tabs">
+    <button class="tab" data-v="browse">Browse</button>
+    <button class="tab" data-v="bookings">My bookings<span id="nb"></span></button>
+    <button class="tab" data-v="listings">My listings</button>
+  </nav>
+  <div class="right">
+    <button class="icon" id="theme" aria-label="Switch light or dark mode"></button>
+    <button class="icon" id="palBtn" aria-label="Choose colour theme"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18c1.2 0 2-.8 2-1.8 0-.5-.2-.9-.5-1.2-.3-.3-.5-.7-.5-1.2 0-1 .8-1.8 1.8-1.8H17a4 4 0 0 0 4-4C21 6.6 17 3 12 3z"/><circle cx="7.5" cy="11" r="1.2"/><circle cx="10.5" cy="7" r="1.2"/><circle cx="15" cy="7.5" r="1.2"/></svg></button>
+    <button class="btn acc" id="add">List an item</button>
+    <div class="pop" id="pop" hidden></div>
+  </div>
+</div></header>
+
+<main class="wrap">
+  <section id="v-browse">
+    <div class="hero">
+      <div><h1>Borrow anything on campus, by the day.</h1><p>Find it, pick your dates, collect it with a booking code.</p></div>
+      <div class="stats" id="stats"></div>
+    </div>
+    <div class="tools">
+      <input id="q" type="search" placeholder="Search items, owners or categories" aria-label="Search">
+      <select id="catF" aria-label="Category"></select>
+      <select id="sort" aria-label="Sort"><option value="">Recommended</option><option value="lo">Price: low to high</option><option value="hi">Price: high to low</option></select>
+    </div>
+    <div class="chips" id="zones"></div>
+    <div class="grid" id="grid"></div>
+  </section>
+  <section id="v-bookings" hidden><div class="vh"><h2>My bookings</h2></div><div class="list" id="bookList"></div></section>
+  <section id="v-listings" hidden><div class="vh"><h2>My listings</h2><span class="muted">Block days when you need your item back.</span></div><div class="list" id="myList"></div></section>
+</main>
+<footer class="wrap"><span>RentHub · sample data for demo</span><button id="reset">Reset demo data</button></footer>
+
+<div class="ov" id="ov" hidden><div class="modal" id="md"></div></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+/* ---------- 1. Helpers ---------- */
+const $ = s => document.querySelector(s);
+const iso = t => t.getFullYear()+"-"+String(t.getMonth()+1).padStart(2,"0")+"-"+String(t.getDate()).padStart(2,"0");
+const TODAY = iso(new Date());
+const plus = n => { const t = new Date(); t.setDate(t.getDate()+n); return iso(t); };
+const range = (a,b) => { const out=[], t=new Date(a+"T00:00"); while (iso(t)<=b){ out.push(iso(t)); t.setDate(t.getDate()+1);} return out; };
+const nice = s => new Date(s+"T00:00").toLocaleDateString("en-IN",{day:"numeric",month:"short"});
+const esc = s => String(s).replace(/[&<>"']/g, c => "&#"+c.charCodeAt(0)+";");
+const store = { get(k,d){ try{ return JSON.parse(localStorage.getItem(k)) ?? d; }catch{ return d; } }, set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch{} } };
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>t.hidden=true,2200); }
+
+/* ---------- 2. Data ---------- */
+const CATS = ["Study","Electronics","Travel","Music","Lab","Tools","Sports","Hostel"];
+const ZONES = ["All","TB-1","TB-2","Boys Hostel","Girls Hostel","Main Block","Library","Canteen"];
+// Simple drawings used as item photos. Classes a/b colour them from the theme.
+const ICON = {
+  calc:'<rect class="a" x="14" y="6" width="36" height="52" rx="5"/><rect class="c" x="19" y="11" width="26" height="10" rx="2"/>'+[0,1,2].flatMap(r=>[0,1,2].map(c=>`<rect class="b" x="${19+c*9}" y="${27+r*9}" width="7" height="6" rx="1"/>`)).join(""),
+  cycle:'<g class="s"><circle cx="16" cy="40" r="11"/><circle cx="48" cy="40" r="11"/><path d="M16 40 30 22h14l4 18M30 22l6 18 8-18"/></g>',
+  cam:'<rect class="a" x="6" y="18" width="52" height="34" rx="6"/><rect class="a" x="22" y="11" width="18" height="10" rx="2"/><circle class="b" cx="32" cy="35" r="11"/><circle class="a" cx="32" cy="35" r="6"/>',
+  draft:'<rect class="b" x="6" y="22" width="52" height="7" rx="2"/><rect class="a" x="6" y="35" width="52" height="7" rx="2"/>',
+  guitar:'<rect class="a" x="29" y="4" width="6" height="30"/><circle class="b" cx="32" cy="40" r="11"/><circle class="b" cx="32" cy="51" r="10"/><circle class="a" cx="32" cy="44" r="4"/>',
+  book:'<path class="a" d="M32 14C22 8 10 9 6 12v40c6-3 18-3 26 2z"/><path class="b" d="M32 14c10-6 22-5 26-2v40c-6-3-18-3-26 2z"/>',
+  coat:'<path class="s" d="M22 8l10 6 10-6 14 10-6 10-4-2v30H18V26l-4 2-6-10z"/>',
+  drill:'<rect class="b" x="8" y="16" width="36" height="14" rx="4"/><rect class="a" x="44" y="20" width="14" height="5"/><path class="a" d="M16 30h14l-3 22h-8z"/>',
+  box:'<rect class="b" x="12" y="18" width="40" height="34" rx="4"/><rect class="a" x="12" y="18" width="40" height="8"/>'
+};
+const pic = it => it.photo ? `<img src="${it.photo}" alt="">` : `<svg viewBox="0 0 64 64" aria-hidden="true">${ICON[it.icon]||ICON.box}</svg>`;
+
+// [name, owner, phone, zone, category, rent/day, icon, days already taken by others (from today), listed by you?]
+const SEED = [
+  ["Casio fx-991EX Calculator","Aarav Mehta","98xxxxxx21","TB-1","Study",20,"calc",[2,3]],
+  ["Hero Sprint Bicycle","Priya Nair","97xxxxxx04","Girls Hostel","Travel",50,"cycle",[1,5,6]],
+  ["Canon DSLR 1500D","Rohan Das","99xxxxxx88","Main Block","Electronics",250,"cam",[4]],
+  ["Engineering Drafter","You","90xxxxxx13","TB-1","Study",15,"draft",[],1],
+  ["Acoustic Guitar","Kabir Singh","88xxxxxx56","Canteen","Music",60,"guitar",[2]],
+  ["Data Structures Textbook","Ananya Rao","95xxxxxx40","Library","Study",10,"book",[7,8]],
+  ["Lab Coat (Size M)","You","90xxxxxx13","Boys Hostel","Lab",10,"coat",[],1],
+  ["Power Drill","Meera Joshi","91xxxxxx35","TB-2","Tools",80,"drill",[3]]
+].map(([name,owner,phone,zone,cat,rent,icon,taken,mine],i)=>({id:i+1,name,owner,phone,zone,cat,rent,icon,taken:taken.map(plus),blocked:[],mine:!!mine,paused:false}));
+
+let S = store.get("renthub", null) || { items: SEED, bookings: [] };
+const save = () => { store.set("renthub", S); render(); };
+const item = id => S.items.find(i => i.id === id);
+let zone = "All";
+
+// Days an item can't be booked: taken by others + blocked by owner + your other bookings
+function busyDays(it, skipCode, withBlocked = true){
+  const mine = S.bookings.filter(b => b.itemId===it.id && b.code!==skipCode).flatMap(b => range(b.start,b.end));
+  return new Set([...it.taken, ...mine, ...(withBlocked ? it.blocked : [])]);
+}
+const status = b => TODAY < b.start ? ["Upcoming","p-up"] : TODAY > b.end ? ["Returned","p-done"] : ["Active","p-on"];
+const newCode = id => "LH-"+id+"-"+Array.from({length:4},()=>"ABCDEFGHJKMNPQRSTUVWXYZ23456789"[Math.random()*31|0]).join("");
+
+/* ---------- 3. Views ---------- */
+function render(){
+  const live = S.items.filter(i => !i.paused);
+  $("#stats").innerHTML = `<div><b>${live.length}</b><span>Items</span></div><div><b>${ZONES.length-1}</b><span>Zones</span></div><div><b>₹${Math.min(...live.map(i=>i.rent))}+</b><span>Per day</span></div>`;
+  $("#zones").innerHTML = ZONES.map(z => `<button class="chip ${z===zone?"on":""}" data-z="${z}">${z}</button>`).join("");
+
+  // Browse: zone + search + sort
+  const q = $("#q").value.trim().toLowerCase(), sort = $("#sort").value;
+  const allCats = [...new Set([...CATS, ...S.items.map(i=>i.cat)])], cf = $("#catF").value;
+  $("#catF").innerHTML = `<option value="">All categories</option>` + allCats.map(c=>`<option ${c===cf?"selected":""}>${esc(c)}</option>`).join("");
+  let list = live.filter(i => (zone==="All" || i.zone===zone) && (!cf || i.cat===cf) && (i.name+i.owner+i.cat).toLowerCase().includes(q));
+  if (sort) list.sort((a,b) => sort==="lo" ? a.rent-b.rent : b.rent-a.rent);
+  $("#grid").innerHTML = list.map(i => `
+    <article class="card"><div class="pic">${pic(i)}</div>
+      <div class="body"><span class="kick">${esc(i.zone)} · ${esc(i.cat)}</span><h3>${esc(i.name)}</h3>
+        <span class="muted">${i.mine ? "Listed by you" : "Owner: "+esc(i.owner)}</span>
+        <div class="foot"><span class="price">₹${i.rent}<small> /day</small></span>
+          ${i.mine ? `<button class="btn line" data-act="avail" data-id="${i.id}">Manage</button>` : `<button class="btn" data-act="book" data-id="${i.id}">Book</button>`}</div></div>
+    </article>`).join("") || `<p class="empty" style="grid-column:1/-1">Nothing matches. Try another zone or search.</p>`;
+
+  // My bookings
+  const bk = [...S.bookings].sort((a,b) => a.start.localeCompare(b.start));
+  $("#nb").textContent = bk.filter(b => status(b)[0]!=="Returned").length || "";
+  $("#nb").hidden = !$("#nb").textContent;
+  $("#bookList").innerHTML = bk.map(b => { const it = item(b.itemId), [st,cls] = status(b), n = range(b.start,b.end).length; return `
+    <div class="row"><div class="thumb">${pic(it)}</div>
+      <div><h3>${esc(it.name)}<span class="pill ${cls}">${st}</span></h3>
+        <div class="muted">${nice(b.start)} – ${nice(b.end)} · ${n} day${n>1?"s":""} · ₹${b.total} · <span class="mono">${b.code}</span></div></div>
+      <div class="acts"><button class="btn line" data-act="code" data-code="${b.code}">Code</button>
+        ${st!=="Returned" ? `<button class="btn line" data-act="edit" data-code="${b.code}">Change dates</button>` : ""}
+        ${st==="Upcoming" ? `<button class="btn danger" data-act="cancel" data-code="${b.code}">Cancel</button>` : ""}</div>
+    </div>`; }).join("") || `<p class="empty">No bookings yet. Browse items and pick your dates.</p>`;
+
+  // My listings
+  $("#myList").innerHTML = S.items.filter(i => i.mine).map(i => { const times = S.bookings.filter(b=>b.itemId===i.id).length + i.taken.length; return `
+    <div class="row"><div class="thumb">${pic(i)}</div>
+      <div><h3>${esc(i.name)}<span class="pill ${i.paused?"p-pause":"p-on"}">${i.paused?"Paused":"Listed"}</span></h3>
+        <div class="muted">${esc(i.zone)} · ₹${i.rent}/day · ${i.blocked.length} day${i.blocked.length===1?"":"s"} blocked · booked ${times}×</div></div>
+      <div class="acts"><button class="btn line" data-act="avail" data-id="${i.id}">Edit dates</button>
+        <button class="btn line" data-act="pause" data-id="${i.id}">${i.paused?"Resume":"Pause"}</button>
+        <button class="btn danger" data-act="remove" data-id="${i.id}">Remove</button></div>
+    </div>`; }).join("") || `<p class="empty">You haven't listed anything. Use “List an item” to start lending.</p>`;
+}
+
+// Switch between Browse / My bookings / My listings using the URL hash
+function show(){
+  const v = ["browse","bookings","listings"].includes(location.hash.slice(1)) ? location.hash.slice(1) : "browse";
+  for (const s of ["browse","bookings","listings"]) $("#v-"+s).hidden = s!==v;
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("on", t.dataset.v===v));
+}
+$("#tabs").onclick = e => { const v = e.target.closest(".tab")?.dataset.v; if (v) location.hash = v; };
+addEventListener("hashchange", show);
+
+/* ---------- 4. Calendar (used for booking, changing dates and owner blocking) ---------- */
+let C;
+function openCal(mode, it, b){
+  C = { mode, it, b, start:b?.start||null, end:b?.end||null, blk:new Set(it.blocked), m:new Date((b?.start||TODAY)+"T00:00") };
+  C.m.setDate(1); drawCal(); $("#ov").hidden = false;
+}
+function drawCal(){
+  const { mode, it, m } = C, block = mode==="block";
+  const busy = busyDays(it, C.b?.code, !block), y = m.getFullYear(), mo = m.getMonth();
+  let cells = "SMTWTFS".split("").map(x=>`<i>${x}</i>`).join("") + "<span></span>".repeat(new Date(y,mo,1).getDay());
+  for (let n=1; n<=new Date(y,mo+1,0).getDate(); n++){
+    const day = iso(new Date(y,mo,n)); let cls = busy.has(day) ? "busy" : "";
+    if (block && C.blk.has(day)) cls = "blk";
+    if (day===C.start || day===C.end) cls = "pick"; else if (C.end && day>C.start && day<C.end) cls = "mid";
+    cells += `<button class="day ${cls}" data-day="${day}" ${day<TODAY || busy.has(day) ? "disabled" : ""}>${n}</button>`;
+  }
+  const days = C.start ? range(C.start, C.end||C.start) : [], total = days.length * it.rent;
+  const title = { book:"Book "+it.name, edit:"Change dates", block:"Availability" }[mode];
+  $("#md").innerHTML = `
+    <span class="kick">${esc(it.zone)}</span><h2>${esc(title)}</h2>
+    ${block ? `<p class="muted">Tap days to block or unblock them. Blocked days can't be booked.</p>`
+            : `<div class="owner"><div class="av">${esc(it.owner[0])}</div><div><b>${esc(it.owner)}</b><div class="muted">${esc(it.phone)} · pickup at ${esc(it.zone)}</div></div></div><b>Pick dates</b> <span class="muted">tap start, then end</span>`}
+    <div class="ch"><button class="icon" data-mv="-1" aria-label="Previous month">‹</button><b>${m.toLocaleString("en-IN",{month:"long",year:"numeric"})}</b><button class="icon" data-mv="1" aria-label="Next month">›</button></div>
+    <div class="cal" id="cal">${cells}</div>
+    <div class="legend">${block ? "" : `<span><s style="background:var(--brand)"></s>Your dates</span>`}<span><s style="background:var(--busy)"></s>Booked</span><span><s class="day blk" style="padding:0"></s>Blocked by owner</span></div>
+    ${block ? "" : `<div class="bill"><div><span>₹${it.rent} × ${days.length} day${days.length===1?"":"s"}</span><span></span></div><div class="tot"><span>Total</span><span>₹${total}</span></div></div>`}
+    <div class="mact"><button class="btn line" data-close>Cancel</button>
+      <button class="btn acc" id="ok" ${block||days.length?"":"disabled"}>${ {book:"Confirm booking",edit:"Save new dates",block:"Save availability"}[mode] }</button></div>`;
+  $("#cal").onclick = e => pick(e.target.dataset.day);
+  $("#ok").onclick = () => confirmCal(days, total);
+}
+function pick(day){
+  if (!day) return;
+  if (C.mode==="block"){ C.blk.has(day) ? C.blk.delete(day) : C.blk.add(day); }
+  else if (!C.start || C.end || day<C.start){ C.start = day; C.end = null; }
+  else { const busy = busyDays(C.it, C.b?.code); range(C.start,day).some(x=>busy.has(x)) ? (C.start=day) : (C.end=day); } // can't cross booked days
+  drawCal();
+}
+function confirmCal(days, total){
+  const { mode, it } = C;
+  if (mode==="block"){ it.blocked = [...C.blk].sort(); close(); toast("Availability saved"); }
+  else if (mode==="edit"){ Object.assign(C.b, { start:days[0], end:days.at(-1), total }); close(); toast("Dates changed to "+nice(days[0])+" – "+nice(days.at(-1))); }
+  else { const b = { code:newCode(it.id), itemId:it.id, start:days[0], end:days.at(-1), total }; S.bookings.push(b); ticket(b); toast("Booking confirmed"); }
+  save();
+}
+
+/* ---------- 5. Other modals ---------- */
+function ticket(b){
+  const it = item(b.itemId);
+  $("#md").innerHTML = `<span class="kick">Booking code</span><h2>${esc(it.name)}</h2>
+    <p class="muted">Show this code to ${esc(it.owner)} at ${esc(it.zone)} when you collect it.</p>
+    <div class="code">${b.code}</div><p>${nice(b.start)} – ${nice(b.end)} · <b>₹${b.total}</b></p>
+    <div class="mact"><button class="btn line" id="copy">Copy code</button><button class="btn" data-close>Done</button></div>`;
+  $("#copy").onclick = e => navigator.clipboard.writeText(b.code).then(()=>e.target.textContent="Copied", ()=>e.target.textContent="Select the code to copy");
+  $("#ov").hidden = false;
+}
+function addForm(){
+  $("#md").innerHTML = `<h2>List an item</h2><form class="form" id="f">
+    <label>Item name<input id="fn" required placeholder="e.g. Scientific calculator"></label>
+    <div class="two"><label>Category<select id="fc">${CATS.map(c=>`<option>${c}</option>`).join("")}<option value="other">Other…</option></select></label><label>Rent per day (₹)<input id="fr" type="number" min="1" required></label></div>
+    <div class="two"><label>Zone<select id="fz">${ZONES.slice(1).map(z=>`<option>${z}</option>`).join("")}</select></label><label>Phone<input id="fp" required></label></div>
+    <label id="fol" hidden>Your category<input id="fo" placeholder="e.g. Kitchen"></label>
+    <label>Photo<input id="ff" type="file" accept="image/*"></label>
+    <div class="mact"><button type="button" class="btn line" data-close>Cancel</button><button type="button" class="btn acc" id="pub">Publish listing</button></div></form>`;
+  $("#ov").hidden = false;
+  $("#fc").onchange = () => $("#fol").hidden = $("#fc").value !== "other";
+  $("#f").onsubmit = e => e.preventDefault();
+  // Click handler instead of form submit: the published page's frame blocks form submission
+  $("#pub").onclick = () => {
+    const v = id => document.getElementById(id).value.trim();
+    if (!v("fn") || !(+v("fr") > 0) || !v("fp")) return toast("Fill in item name, rent and phone");
+    if (v("fc")==="other" && !v("fo")) return toast("Type your category");
+    const cat = v("fc")==="other" ? v("fo") : v("fc");
+    const done = photo => { S.items.unshift({ id:Date.now(), name:v("fn"), owner:"You", phone:v("fp"), zone:v("fz"), cat, rent:+v("fr"), icon:"box", photo, taken:[], blocked:[], mine:true, paused:false }); close(); zone = "All"; save(); toast("Listing published. Find it in My listings"); };
+    const file = document.getElementById("ff").files[0]; if (!file) return done(null);
+    // Shrink the photo to 480px so it fits in browser storage
+    const img = new Image(); img.onerror = () => done(null);
+    img.onload = () => { const c = document.createElement("canvas"), k = Math.min(1, 480/Math.max(img.width,img.height));
+      c.width = img.width*k; c.height = img.height*k; c.getContext("2d").drawImage(img,0,0,c.width,c.height); done(c.toDataURL("image/jpeg",.75)); URL.revokeObjectURL(img.src); };
+    img.src = URL.createObjectURL(file);
+  };
+}
+const close = () => $("#ov").hidden = true;
+$("#ov").onclick = e => { if (e.target.id==="ov" || e.target.closest("[data-close]")) close();
+  const mv = e.target.closest("[data-mv]"); if (mv){ C.m.setMonth(C.m.getMonth() + +mv.dataset.mv); drawCal(); } };
+
+/* ---------- 6. Buttons on cards and rows (one click handler) ---------- */
+document.querySelector("main").onclick = e => {
+  const z = e.target.dataset.z; if (z){ zone = z; return render(); }
+  const btn = e.target.closest("[data-act]"); if (!btn) return;
+  const it = item(+btn.dataset.id), b = S.bookings.find(x => x.code===btn.dataset.code);
+  // Two-tap confirm for destructive actions (the page can't show confirm() dialogs)
+  if (["cancel","remove"].includes(btn.dataset.act) && !btn.dataset.sure){ btn.dataset.sure = 1; btn.textContent = "Tap again to confirm"; return; }
+  ({ book:()=>openCal("book",it), edit:()=>openCal("edit",item(b.itemId),b), avail:()=>openCal("block",it), code:()=>ticket(b),
+     cancel:()=>{ S.bookings = S.bookings.filter(x=>x!==b); save(); toast("Booking cancelled"); },
+     pause:()=>{ it.paused = !it.paused; save(); toast(it.paused ? "Listing paused" : "Listing is live again"); },
+     remove:()=>{ S.items = S.items.filter(x=>x!==it); S.bookings = S.bookings.filter(x=>x.itemId!==it.id); save(); toast("Listing removed"); } })[btn.dataset.act]();
+};
+$("#q").oninput = $("#sort").onchange = $("#catF").onchange = render;
+$("#add").onclick = addForm;
+$("#reset").onclick = () => { S = { items: structuredClone(SEED), bookings: [] }; zone = "All"; save(); toast("Demo data reset"); };
+
+/* ---------- 7. Themes: light / dark mode + colour palettes ---------- */
+const root = document.documentElement;
+const isDark = () => root.dataset.theme ? root.dataset.theme==="dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+const themeIcon = () => $("#theme").innerHTML = isDark()
+  ? '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>'
+  : '<svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>';
+// Background tones per family, [light, dark]: bg, surface, soft, line, busy
+const TONES = {
+  ember:  [["#FFF6EE","#FFFFFF","#FDEBDD","#F5D9C4","#EBC7AC"],["#0A0503","#170D08","#22140C","#3A2214","#43291A"]],
+  neutral:[["#F6F6F6","#FFFFFF","#F0F0F1","#E4E4E7","#D9D9DC"],["#000000","#0D0D0D","#161617","#242426","#2B2B2E"]],
+  cold:   [["#F3F6FA","#FFFFFF","#EAF0F6","#DDE5EE","#CDD7E2"],["#03060A","#0B1117","#121A22","#1F2A35","#26333F"]],
+  warm:   [["#FAF7F3","#FFFFFF","#F3EEE7","#E8E1D8","#DCD3C8"],["#080605","#13100D","#1B1713","#2A241E","#332C25"]]
+};
+// Palette: [family, brand (light), brand (dark), accent (light), accent (dark)]
+const PAL = {
+  Ember: ["ember","#EA580C","#FF7A1A","#F97316","#FF9A3C"],
+  Black: ["neutral","#111111","#F4F4F5","#111111","#FFFFFF"],
+  Ocean: ["cold","#1D4ED8","#60A5FA","#0284C7","#38BDF8"],
+  Teal:  ["cold","#0F766E","#2DD4BF","#0D9488","#5EEAD4"],
+  Indigo:["cold","#4338CA","#A5B4FC","#6366F1","#818CF8"],
+  Sunset:["warm","#C2410C","#FB923C","#D97706","#FBBF24"],
+  Rose:  ["warm","#BE123C","#FB7185","#E11D48","#FDA4AF"],
+  Mango: ["warm","#A16207","#FACC15","#B45309","#FDE047"]
+};
+let pal = store.get("renthub-pal","Ember"); if (!PAL[pal]) pal = "Ember";
+// Warm vibrant gradient behind the Ember theme
+const GRAD = ["radial-gradient(70% 60% at 10% 0%,#FFD3B0,transparent 70%),radial-gradient(60% 50% at 95% 20%,#FFC2C2,transparent 70%)",
+  "radial-gradient(70% 60% at 10% 0%,#8A2E08,transparent 70%),radial-gradient(60% 55% at 95% 25%,#6B1430,transparent 70%),radial-gradient(70% 60% at 50% 110%,#5A2A05,transparent 70%)"];
+
+function applyTheme(){
+  const dark = isDark(), [fam,lb,db,la,da] = PAL[pal], [bg,surface,soft,line,busy] = TONES[fam][+dark];
+  const vars = { bg, surface, soft, line, busy, brand:dark?db:lb, "on-brand":dark?"#000":"#fff", accent:dark?da:la, "on-accent":dark?"#000":"#fff",
+                 pic2: fam==="ember" ? (dark?"#FFE0C2":"#7C2D12") : fam==="neutral" ? (dark?"#71717A":"#A1A1AA") : (dark?da:la) }; // second colour in item pictures
+  for (const k in vars) root.style.setProperty("--"+k, vars[k]);
+  root.style.setProperty("--grad", fam==="ember" ? GRAD[+dark] : "none");
+  themeIcon(); drawPicker();
+}
+function setMode(m){
+  if (m==="system") delete root.dataset.theme; else root.dataset.theme = m;
+  store.set("renthub-theme", m); applyTheme();
+}
+function drawPicker(){
+  const mode = root.dataset.theme || "system";
+  $("#pop").innerHTML = `<b class="ph">Mode</b><div class="seg">${["light","dark","system"].map(m=>`<button data-mode="${m}" class="${m===mode?"on":""}">${m[0].toUpperCase()+m.slice(1)}</button>`).join("")}</div>`
+    + Object.entries({ember:"Signature",neutral:"Neutral",cold:"Cold colours",warm:"Warm colours"}).map(([f,label]) => `<b class="ph">${label}</b><div class="sw">`
+    + Object.entries(PAL).filter(([,p])=>p[0]===f).map(([n,p]) => `<button data-pal="${n}" class="${n===pal?"on":""}"><i style="background:${isDark()?p[2]:p[1]}"></i>${n}</button>`).join("") + `</div>`).join("");
+}
+$("#theme").onclick = () => setMode(isDark() ? "light" : "dark");
+$("#palBtn").onclick = e => { e.stopPropagation(); $("#pop").hidden = !$("#pop").hidden; };
+$("#pop").onclick = e => { e.stopPropagation(); const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.mode) setMode(b.dataset.mode);
+  if (b.dataset.pal){ pal = b.dataset.pal; store.set("renthub-pal", pal); applyTheme(); toast(pal+" theme on"); } };
+document.addEventListener("click", () => $("#pop").hidden = true); // click outside closes the picker
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
+const m0 = store.get("renthub-theme", "dark") || "dark"; if (m0 !== "system") root.dataset.theme = m0; // dark by default
+
+/* ---------- Start ---------- */
+applyTheme(); render(); show();
+</script>
+</body>
+</html>
